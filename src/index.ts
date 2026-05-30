@@ -4,6 +4,22 @@ import fs from "fs";
 
 const app = express();
 
+
+const videos = [
+  {
+    id: "video01",
+    title: "Sample Video 1",
+    file: "video01.mp4",
+  },
+  {
+    id: "video02",
+    title: "Sample Video 2",
+    file: "video02.mp4",
+  },
+];
+
+
+//STREAM
 app.get("/stream/:file", (req, res) => {
   const filePath = path.join(process.cwd(), "videos", req.params.file);
 
@@ -20,11 +36,18 @@ app.get("/stream/:file", (req, res) => {
 
   const CHUNK_SIZE = 10 ** 6;
 
-  const start = Number(range.split("=")[1]!.split("-")[0]);
+  const cleanRange = range.replace("bytes=", "");
+  const parts = cleanRange.split("-");
+  const start = parts[0] ? parseInt(parts[0], 10) : 0;
 
-  const end = Math.min(start + CHUNK_SIZE, fileSize - 1);
+  const end = parts[1]
+    ? parseInt(parts[1], 10)
+    : Math.min(start + CHUNK_SIZE - 1,fileSize-1);
 
-  const file = fs.createReadStream(filePath, { start, end });
+  if (start < 0 || end >= fileSize || start > end) {
+    res.status(416).send("Invalid range!!-s");
+    return
+  }
 
   const contentLength = end - start + 1;
 
@@ -35,8 +58,28 @@ app.get("/stream/:file", (req, res) => {
     "content-type": "video/mp4",
   });
 
+  const file = fs.createReadStream(filePath, { start, end });
+
   file.pipe(res);
 });
+
+
+
+//VIDEOS
+app.get("/videos",(req,res)=>{
+  res.json(videos)
+})
+
+app.get("/videos/:id",(req,res)=>{
+  const video=videos.find(v=>v.id===req.params.id)
+
+  if(!video){
+    res.status(404).json({message: "not ffound"})
+    return
+  }
+
+  res.json(video)
+})
 
 const PORT = 3000;
 
