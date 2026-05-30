@@ -1,23 +1,42 @@
 import express from "express";
-import path from "path"
+import path from "node:path";
+import fs from "fs";
 
 const app = express();
 
-// app.use(express.json());
+app.get("/stream/:file", (req, res) => {
+  const filePath = path.join(process.cwd(), "videos", req.params.file);
 
-// app.get("/", (req, res) => {
-//   res.json({ message: "Api is working" });
-// });
+  const stat = fs.statSync(filePath);
 
-// app.post("/test", (req, res) => {
-//   console.log(req.body);
-//   res.json(req.body);
-// });
+  const fileSize = stat.size;
 
+  const range = req.headers.range;
 
-const videoPath=path.join(process.cwd(),"videos")
+  if (!range) {
+    res.status(400).send("Missing Range headers");
+    return;
+  }
 
-app.use("/videos", express.static(videoPath))
+  const CHUNK_SIZE = 10 ** 6;
+
+  const start = Number(range.split("=")[1]!.split("-")[0]);
+
+  const end = Math.min(start + CHUNK_SIZE, fileSize - 1);
+
+  const file = fs.createReadStream(filePath, { start, end });
+
+  const contentLength = end - start + 1;
+
+  res.writeHead(206, {
+    "content-range": `bytes ${start}-${end}/${fileSize}`,
+    "accept-ranges": "bytes",
+    "content-length": contentLength,
+    "content-type": "video/mp4",
+  });
+
+  file.pipe(res);
+});
 
 const PORT = 3000;
 
