@@ -1,92 +1,38 @@
 import express from "express";
 import path from "node:path";
-import fs from "fs";
 
 const app = express();
 
 const videos = [
   {
-    id: "video01",
-    title: "Sample Video 1",
-    file: "video01.mp4",
+    id: "knives_out",
+    title: "Knives Out (2019)",
+    playlist: "/hls/knives_out/index.m3u8"
   },
   {
-    id: "video02",
-    title: "Sample Video 2",
-    file: "video02.mp4",
-  },
+    id: "curse_black_pearl", 
+    title: "Pirates of the Caribbean",
+    playlist: "/hls/curse_black_pearl/index.m3u8"
+  }
 ];
 
-//STREAM
-app.get("/stream/:file", (req, res) => {
-  const filePath = path.join(process.cwd(), "videos", req.params.file);
+app.use("/hls", express.static(path.join(process.cwd(),"..","videos")))
 
-  const stat = fs.statSync(filePath);
+app.get("/videos",(req, res )=>{
+  res.json(videos)
+})
 
-  const fileSize = stat.size;
 
-  const range = req.headers.range;
-  const CHUNK_SIZE = 10 ** 6;
-
-  if (!range) {
-    const start = 0;
-    const end = Math.min(CHUNK_SIZE - 1, fileSize - 1);
-    const contentLength = end - start + 1;
-
-    res.writeHead(206, {
-      "content-range": `bytes ${start}-${end}/${fileSize}`,
-      "accept-ranges": "bytes",
-      "content-length": contentLength,
-      "content-type": "video/mp4",
-    });
-
-    const file = fs.createReadStream(filePath, { start, end });
-
-    file.pipe(res);
-    return;
+app.get("/videos/:id",(req, res)=>{
+  const video=videos.find(v=>v.id===req.params.id)
+  if(!video){
+    res.status(404).json({message:"Not Fount"})
+    return
   }
 
-  const cleanRange = range.replace("bytes=", "");
-  const parts = cleanRange.split("-");
-  const start = parts[0] ? parseInt(parts[0], 10) : 0;
+  res.json(video)
+})
 
-  const end = parts[1]
-    ? parseInt(parts[1], 10)
-    : Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
-
-  if (start < 0 || end >= fileSize || start > end) {
-    res.status(416).send("Invalid range!!-s");
-    return;
-  }
-
-  const contentLength = end - start + 1;
-
-  res.writeHead(206, {
-    "content-range": `bytes ${start}-${end}/${fileSize}`,
-    "accept-ranges": "bytes",
-    "content-length": contentLength,
-    "content-type": "video/mp4",
-  });
-
-  const file = fs.createReadStream(filePath, { start, end });
-  file.pipe(res);
-});
-
-//VIDEOS
-app.get("/videos", (req, res) => {
-  res.json(videos);
-});
-
-app.get("/videos/:id", (req, res) => {
-  const video = videos.find((v) => v.id === req.params.id);
-
-  if (!video) {
-    res.status(404).json({ message: "not ffound" });
-    return;
-  }
-
-  res.json(video);
-});
 
 const PORT = 3000;
 
