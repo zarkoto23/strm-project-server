@@ -4,7 +4,6 @@ import fs from "fs";
 
 const app = express();
 
-
 const videos = [
   {
     id: "video01",
@@ -18,7 +17,6 @@ const videos = [
   },
 ];
 
-
 //STREAM
 app.get("/stream/:file", (req, res) => {
   const filePath = path.join(process.cwd(), "videos", req.params.file);
@@ -28,13 +26,25 @@ app.get("/stream/:file", (req, res) => {
   const fileSize = stat.size;
 
   const range = req.headers.range;
+  const CHUNK_SIZE = 10 ** 6;
 
   if (!range) {
-    res.status(400).send("Missing Range headers");
+    const start = 0;
+    const end = Math.min(CHUNK_SIZE - 1, fileSize - 1);
+    const contentLength = end - start + 1;
+
+    res.writeHead(206, {
+      "content-range": `bytes ${start}-${end}/${fileSize}`,
+      "accept-ranges": "bytes",
+      "content-length": contentLength,
+      "content-type": "video/mp4",
+    });
+
+    const file = fs.createReadStream(filePath, { start, end });
+
+    file.pipe(res);
     return;
   }
-
-  const CHUNK_SIZE = 10 ** 6;
 
   const cleanRange = range.replace("bytes=", "");
   const parts = cleanRange.split("-");
@@ -42,11 +52,11 @@ app.get("/stream/:file", (req, res) => {
 
   const end = parts[1]
     ? parseInt(parts[1], 10)
-    : Math.min(start + CHUNK_SIZE - 1,fileSize-1);
+    : Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
 
   if (start < 0 || end >= fileSize || start > end) {
     res.status(416).send("Invalid range!!-s");
-    return
+    return;
   }
 
   const contentLength = end - start + 1;
@@ -59,27 +69,24 @@ app.get("/stream/:file", (req, res) => {
   });
 
   const file = fs.createReadStream(filePath, { start, end });
-
   file.pipe(res);
 });
 
-
-
 //VIDEOS
-app.get("/videos",(req,res)=>{
-  res.json(videos)
-})
+app.get("/videos", (req, res) => {
+  res.json(videos);
+});
 
-app.get("/videos/:id",(req,res)=>{
-  const video=videos.find(v=>v.id===req.params.id)
+app.get("/videos/:id", (req, res) => {
+  const video = videos.find((v) => v.id === req.params.id);
 
-  if(!video){
-    res.status(404).json({message: "not ffound"})
-    return
+  if (!video) {
+    res.status(404).json({ message: "not ffound" });
+    return;
   }
 
-  res.json(video)
-})
+  res.json(video);
+});
 
 const PORT = 3000;
 
