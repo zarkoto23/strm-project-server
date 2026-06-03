@@ -7,16 +7,15 @@ const videos = [
   {
     id: "knives_out",
     title: "Knives Out (2019)",
-    playlist: "/hls/knives_out/index.m3u8"
+    playlist: "http://localhost:8080/hls/knives_out_1080/index.m3u8"
   },
   {
     id: "curse_black_pearl", 
     title: "Pirates of the Caribbean",
-    playlist: "/hls/curse_black_pearl/index.m3u8"
+    playlist: "http://localhost:8080/hls/curse_black_pearl/index.m3u8"
   }
 ];
 
-app.use("/hls", express.static(path.join(process.cwd(),"..","videos")))
 
 app.get("/videos",(req, res )=>{
   res.json(videos)
